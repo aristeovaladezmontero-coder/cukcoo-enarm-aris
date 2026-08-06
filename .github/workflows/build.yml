@@ -1,0 +1,63 @@
+name: Build macOS Menu Bar App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-menubar-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch app icon and generate all icon formats
+        run: |
+          curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-cuckoo-enarm.png"
+          # Ícono principal 1024x1024
+          sips -z 1024 1024 /tmp/icon-src.png --out src-tauri/icons/icon.png
+          # ICNS con todos los tamaños estándar
+          mkdir -p /tmp/icon.iconset
+          for s in 16 32 128 256 512; do
+            sips -z $s $s /tmp/icon-src.png --out /tmp/icon.iconset/icon_${s}x${s}.png
+            sips -z $((s*2)) $((s*2)) /tmp/icon-src.png --out /tmp/icon.iconset/icon_${s}x${s}@2x.png
+          done
+          iconutil -c icns /tmp/icon.iconset -o src-tauri/icons/icon.icns
+          # Ícono de la barra de menú (44x44)
+          sips -z 44 44 /tmp/icon-src.png --out src-tauri/icons/tray.png
+
+      - name: Install Tauri CLI
+        run: npm install
+
+      - name: Build app
+        run: npx tauri build --bundles app,dmg
+
+      - name: Zip .app
+        run: |
+          APP_PATH=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name "*.app" | head -1)
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" app-macOS.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: menubar-app-macOS
+          path: |
+            app-macOS.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 3
