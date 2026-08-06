@@ -30,17 +30,24 @@ jobs:
       - name: Fetch app icon and generate all icon formats
         run: |
           curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-cuckoo-enarm.png"
-          # Ícono principal 1024x1024
-          sips -z 1024 1024 /tmp/icon-src.png --out src-tauri/icons/icon.png
-          # ICNS con todos los tamaños estándar
-          mkdir -p /tmp/icon.iconset
-          for s in 16 32 128 256 512; do
-            sips -z $s $s /tmp/icon-src.png --out /tmp/icon.iconset/icon_${s}x${s}.png
-            sips -z $((s*2)) $((s*2)) /tmp/icon-src.png --out /tmp/icon.iconset/icon_${s}x${s}@2x.png
-          done
+          python3 -m pip install --quiet pillow || python3 -m pip install --quiet --break-system-packages pillow
+          cat > /tmp/make_icons.py <<'EOF'
+          from PIL import Image
+          import os
+          # Forzar RGBA (Tauri lo exige) y hacer el lienzo cuadrado
+          src = Image.open('/tmp/icon-src.png').convert('RGBA')
+          side = max(src.size)
+          canvas = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+          canvas.paste(src, ((side - src.width) // 2, (side - src.height) // 2))
+          canvas.resize((1024, 1024), Image.LANCZOS).save('src-tauri/icons/icon.png')
+          canvas.resize((44, 44), Image.LANCZOS).save('src-tauri/icons/tray.png')
+          os.makedirs('/tmp/icon.iconset', exist_ok=True)
+          for s in [16, 32, 128, 256, 512]:
+              canvas.resize((s, s), Image.LANCZOS).save(f'/tmp/icon.iconset/icon_{s}x{s}.png')
+              canvas.resize((s * 2, s * 2), Image.LANCZOS).save(f'/tmp/icon.iconset/icon_{s}x{s}@2x.png')
+          EOF
+          python3 /tmp/make_icons.py
           iconutil -c icns /tmp/icon.iconset -o src-tauri/icons/icon.icns
-          # Ícono de la barra de menú (44x44)
-          sips -z 44 44 /tmp/icon-src.png --out src-tauri/icons/tray.png
 
       - name: Install Tauri CLI
         run: npm install
