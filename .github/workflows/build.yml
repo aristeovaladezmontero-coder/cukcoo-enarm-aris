@@ -32,7 +32,7 @@ jobs:
 
       - name: Fetch app icon and generate all icon formats
         run: |
-          curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-rio.png"
+          curl -fsSL -H "Cache-Control: no-cache" -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-rio.png?nocache=$(date +%s)"
           python3 -m pip install --quiet pillow || python3 -m pip install --quiet --break-system-packages pillow
           cat > /tmp/make_icons.py <<'EOF'
           from PIL import Image
