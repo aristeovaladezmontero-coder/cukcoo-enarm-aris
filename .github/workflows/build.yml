@@ -3,6 +3,9 @@ name: Build macOS Menu Bar App
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -29,7 +32,7 @@ jobs:
 
       - name: Fetch app icon and generate all icon formats
         run: |
-          curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-cuckoo-enarm.png"
+          curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-rio.png"
           python3 -m pip install --quiet pillow || python3 -m pip install --quiet --break-system-packages pillow
           cat > /tmp/make_icons.py <<'EOF'
           from PIL import Image
@@ -68,3 +71,19 @@ jobs:
             app-macOS.zip
             src-tauri/target/release/bundle/dmg/*.dmg
           retention-days: 3
+
+      - name: Publicar release con link de descarga público
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Río ENARM Aris — última versión"
+          body: |
+            Instalación en un comando (pega esto en Terminal):
+            ```
+            curl -fsSL https://raw.githubusercontent.com/aristeovaladezmontero-coder/cukcoo-enarm-aris/main/install.sh | bash
+            ```
+            O descarga el DMG de aquí abajo, arrastra la app a Aplicaciones y corre:
+            `xattr -cr "/Applications/Río ENARM Aris.app"`
+          files: |
+            app-macOS.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
